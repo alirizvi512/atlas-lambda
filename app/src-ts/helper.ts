@@ -6,7 +6,9 @@ import { Liquidity } from '@raydium-io/raydium-sdk'
 import { Connection } from '@solana/web3.js';
 import RAYDIUM_POOL from './constants/pools';
 import tokensModel from './Database/models/tokens.model';
-import axios from 'axios';
+import axios from 'axios'
+import { getBscStatsQuery } from './queries'
+import { PanCakeSwapSubGraphClient } from './clients/PancakeSwapSubGraphClient';
 
 
 export const get24HVolume = async (token0Address: string, token1Address: string): Promise<string> => {
@@ -103,25 +105,33 @@ export const getLiquidity = async (pool: any) => {
 export const getUsdPrice = async (address: string, chainId: number) => {
     try {
         const token: any = await tokensModel.findOne({ address: address.toLowerCase(), chainId });
-        return token ? token.priceUSD : 1
+        return token ? token.priceUSD : null
     } catch (err) {
         throw new Error(err.message)
     }
 }
 
-export const getRaydiumStats =async (symbol: string) => {
+export const getRaydiumStats = async (symbol: string) => {
     const raydiumResponse = await axios.get('https://api.raydium.io/v2/main/pairs')
     const raydiumPools = raydiumResponse.data
-
     const raydiumPool = raydiumPools.find(
         (x: any) => x.name === symbol,
     )
     console.log(raydiumPool, symbol)
     if (raydiumPool) {
         return {
-          liquidity: raydiumPool.liquidity,
-          volume: raydiumPool.volume7d,
-          apr: raydiumPool.apr7d,
+            liquidity: raydiumPool.liquidity,
+            volume: raydiumPool.volume7d,
+            apr: raydiumPool.apr7d,
         }
-      }
+    }
+}
+
+export const getBscStats = async (address: String) => {
+    const pancakeswapSubGraphClient = PanCakeSwapSubGraphClient.getSubGraphClient();
+    const { data } = await pancakeswapSubGraphClient.query(getBscStatsQuery, {
+        address: address
+    });
+    console.log(data)
+    return data.pairs[0];
 }
